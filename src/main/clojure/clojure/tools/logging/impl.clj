@@ -60,187 +60,36 @@
   not available."
   []
   (when (class-found? "org.slf4j.Logger")
-    (eval
-      `(let [; Same as is done inside LoggerFactory/getLogger(String).
-             factory# (org.slf4j.LoggerFactory/getILoggerFactory)]
-        (extend org.slf4j.Logger
-          Logger
-          {:enabled?
-           (fn [^org.slf4j.Logger logger# level#]
-             (condp = level#
-               :trace (.isTraceEnabled logger#)
-               :debug (.isDebugEnabled logger#)
-               :info  (.isInfoEnabled  logger#)
-               :warn  (.isWarnEnabled  logger#)
-               :error (.isErrorEnabled logger#)
-               :fatal (.isErrorEnabled logger#)
-               (throw (IllegalArgumentException. (str level#)))))
-           :write!
-           (fn [^org.slf4j.Logger logger# level# ^Throwable e# msg#]
-             (let [^String msg# (str msg#)]
-               (if e#
-                 (condp = level#
-                   :trace (.trace logger# msg# e#)
-                   :debug (.debug logger# msg# e#)
-                   :info  (.info  logger# msg# e#)
-                   :warn  (.warn  logger# msg# e#)
-                   :error (.error logger# msg# e#)
-                   :fatal (.error logger# msg# e#)
-                   (throw (IllegalArgumentException. (str level#))))
-                 (condp = level#
-                   :trace (.trace logger# msg#)
-                   :debug (.debug logger# msg#)
-                   :info  (.info  logger# msg#)
-                   :warn  (.warn  logger# msg#)
-                   :error (.error logger# msg#)
-                   :fatal (.error logger# msg#)
-                   (throw (IllegalArgumentException. (str level#)))))))})
-        (reify LoggerFactory
-          (name [_#]
-            "org.slf4j")
-          (get-logger [_# logger-ns#]
-            (.getLogger factory# ^String (str logger-ns#))))))))
+    ((requiring-resolve 'clojure.tools.logging.slf4j/init))))
+
 
 (defn cl-factory
   "Returns a Commons Logging-based implementation of the LoggerFactory protocol, or
   nil if not available."
   []
   (when (class-found? "org.apache.commons.logging.Log")
-    (eval
-      `(let [; Same as is done inside LogFactory/getLog(String).
-             factory# (org.apache.commons.logging.LogFactory/getFactory)]
-         (extend org.apache.commons.logging.Log
-           Logger
-           {:enabled?
-            (fn [^org.apache.commons.logging.Log logger# level#]
-              (condp = level#
-                :trace (.isTraceEnabled logger#)
-                :debug (.isDebugEnabled logger#)
-                :info  (.isInfoEnabled  logger#)
-                :warn  (.isWarnEnabled  logger#)
-                :error (.isErrorEnabled logger#)
-                :fatal (.isFatalEnabled logger#)
-                (throw (IllegalArgumentException. (str level#)))))
-            :write!
-            (fn [^org.apache.commons.logging.Log logger# level# e# msg#]
-              (if e#
-                (condp = level#
-                  :trace (.trace logger# msg# e#)
-                  :debug (.debug logger# msg# e#)
-                  :info  (.info  logger# msg# e#)
-                  :warn  (.warn  logger# msg# e#)
-                  :error (.error logger# msg# e#)
-                  :fatal (.fatal logger# msg# e#)
-                  (throw (IllegalArgumentException. (str level#))))
-                (condp = level#
-                  :trace (.trace logger# msg#)
-                  :debug (.debug logger# msg#)
-                  :info  (.info  logger# msg#)
-                  :warn  (.warn  logger# msg#)
-                  :error (.error logger# msg#)
-                  :fatal (.fatal logger# msg#)
-                  (throw (IllegalArgumentException. (str level#))))))})
-         (reify LoggerFactory
-           (name [_#]
-             "org.apache.commons.logging")
-           (get-logger [_# logger-ns#]
-             (.getInstance factory# (str logger-ns#))))))))
+    ((requiring-resolve 'clojure.tools.logging.cl/init))))
 
 (defn log4j-factory
   "Returns a Log4j-based implementation of the LoggerFactory protocol, or nil if
   not available."
   []
   (when (class-found? "org.apache.log4j.Logger")
-    (eval
-      `(let [levels# {:trace org.apache.log4j.Level/TRACE
-                      :debug org.apache.log4j.Level/DEBUG
-                      :info  org.apache.log4j.Level/INFO
-                      :warn  org.apache.log4j.Level/WARN
-                      :error org.apache.log4j.Level/ERROR
-                      :fatal org.apache.log4j.Level/FATAL}]
-         (extend org.apache.log4j.Logger
-           Logger
-           {:enabled?
-            (fn [^org.apache.log4j.Logger logger# level#]
-              (.isEnabledFor logger# (get levels# level# level#)))
-            :write!
-            (fn [^org.apache.log4j.Logger logger# level# e# msg#]
-              (let [level# (get levels# level# level#)]
-                (if e#
-                  (.log logger# level# msg# e#)
-                  (.log logger# level# msg#))))})
-         (reify LoggerFactory
-           (name [_#]
-             "org.apache.log4j")
-           (get-logger [_# logger-ns#]
-             (org.apache.log4j.Logger/getLogger ^String (str logger-ns#))))))))
+    ((requiring-resolve 'clojure.tools.logging.log4j/init))))
 
 (defn log4j2-factory
   "Returns a Log4j2-based implementation of the LoggerFactory protocol, or nil if
   not available."
   []
   (when (class-found? "org.apache.logging.log4j.Logger")
-    (eval
-      `(let [; Same as is done inside LogManager/getLogger(String).
-             context# (org.apache.logging.log4j.LogManager/getContext false)
-             levels# {:trace org.apache.logging.log4j.Level/TRACE
-                      :debug org.apache.logging.log4j.Level/DEBUG
-                      :info  org.apache.logging.log4j.Level/INFO
-                      :warn  org.apache.logging.log4j.Level/WARN
-                      :error org.apache.logging.log4j.Level/ERROR
-                      :fatal org.apache.logging.log4j.Level/FATAL}]
-         (extend org.apache.logging.log4j.Logger
-           Logger
-           {:enabled?
-            (fn [logger# level#]
-              (.isEnabled ^org.apache.logging.log4j.Logger logger#
-                          ^org.apache.logging.log4j.Level  (get levels# level# level#)))
-            :write!
-            (fn [^org.apache.logging.log4j.Logger logger# level# e# msg#]
-              (let [level# (get levels# level# level#)]
-                (if e#
-                  (.log ^org.apache.logging.log4j.Logger logger#
-                        ^org.apache.logging.log4j.Level  level#
-                        ^Object                          msg#
-                        ^Throwable                       e#)
-                  (.log ^org.apache.logging.log4j.Logger logger#
-                        ^org.apache.logging.log4j.Level  level#
-                        ^Object                          msg#))))})
-         (reify LoggerFactory
-           (name [_#]
-             "org.apache.logging.log4j")
-           (get-logger [_# logger-ns#]
-             (.getLogger context# ^String (str logger-ns#))))))))
+    ((requiring-resolve 'clojure.tools.logging.log4j2/init))))
 
 (defn jul-factory
   "Returns a java.util.logging-based implementation of the LoggerFactory protocol,
   or nil if not available."
   []
   (when (class-found? "java.util.logging.Logger")
-    (eval
-      `(let [levels# {:trace java.util.logging.Level/FINEST
-                      :debug java.util.logging.Level/FINE
-                      :info  java.util.logging.Level/INFO
-                      :warn  java.util.logging.Level/WARNING
-                      :error java.util.logging.Level/SEVERE
-                      :fatal java.util.logging.Level/SEVERE}]
-         (extend java.util.logging.Logger
-           Logger
-           {:enabled?
-            (fn [^java.util.logging.Logger logger# level#]
-              (.isLoggable logger# (get levels# level# level#)))
-            :write!
-            (fn [^java.util.logging.Logger logger# level# ^Throwable e# msg#]
-              (let [^java.util.logging.Level level# (get levels# level# level#)
-                    ^String msg# (str msg#)]
-                (if e#
-                  (.log logger# level# msg# e#)
-                  (.log logger# level# msg#))))})
-         (reify LoggerFactory
-           (name [_#]
-             "java.util.logging")
-           (get-logger [_# logger-ns#]
-             (java.util.logging.Logger/getLogger (str logger-ns#))))))))
+    ((requiring-resolve 'clojure.tools.logging.jul/init))))
 
 (defn find-factory
   "Returns the first non-nil value from slf4j-factory, cl-factory,
